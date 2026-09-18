@@ -1,0 +1,12 @@
+[package]
+name = "hiding"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies.zeroize]
+version = "1.8.1"
+
+[features]
+"default" = ["alloc"]
+
+"alloc" = ["zeroize/alloc"]
