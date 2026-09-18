@@ -100,7 +100,7 @@ use core::{
     pin::Pin,
 };
 
-use zeroize::{Zeroize, Zeroizing};
+use zeroize::Zeroize;
 
 /// Buffer used to store secrets
 ///
@@ -187,7 +187,7 @@ where
 /// _**`alloc`**_: A secret held on the heap
 #[cfg(feature = "alloc")]
 #[repr(transparent)]
-pub struct Secret<T>(Pin<alloc::boxed::Box<Zeroizing<T>>>)
+pub struct Secret<T>(Pin<alloc::boxed::Box<zeroize::Zeroizing<T>>>)
 where
     T: Zeroize;
 
@@ -254,6 +254,7 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<T> fmt::Debug for Secret<T>
 where
     T: Zeroize,
