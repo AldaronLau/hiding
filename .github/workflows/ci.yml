@@ -114,4 +114,4 @@ jobs:
       - name: Check doc generation succeeds
         run: cargo doc --all-features --no-deps
       - name: Running tests
-        run: cargo hack test --workspace $cargo_hack_flags
+        run: cargo hack test --workspace --all-features
