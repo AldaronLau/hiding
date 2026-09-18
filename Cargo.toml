@@ -2,6 +2,28 @@
 name = "hiding"
 version = "0.1.0"
 edition = "2024"
+description = "Simple crate for hiding secrets"
+license = "Apache-2.0 OR BSL-1.0 OR MIT"
+documentation = "https://docs.rs/hiding"
+homepage = "https://github.com/AldaronLau/hiding/releases"
+repository = "https://github.com/AldaronLau/hiding"
+readme = "README.md"
+keywords = ["secret", "hiding", "zeroize", "zeroization"]
+categories = [
+    "no-std::no-alloc",
+    "security",
+]
+include = [
+    "/LICENSE_APACHE",
+    "/LICENSE_BOOST",
+    "/LICENSE_MIT",
+    "/README.md",
+    "/src/*",
+]
+rust-version = "1.95"
+
+[package.metadata.docs.rs]
+all-features = true
 
 [dependencies.zeroize]
 version = "1.8.1"

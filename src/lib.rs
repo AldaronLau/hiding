@@ -1,8 +1,8 @@
 //! Simple crate for hiding secrets.
 //!
 //! Allows you to create immutable secrets, which can be exposed, and are
-//! zeroized on drop.  This crate ensures (where possible) that you don't move
-//! or print your secrets, as moving a value can result in a non-zeroized copy
+//! zeroïzed on drop.  This crate ensures (where possible) that you don't move
+//! or print your secrets, as moving a value can result in a non-zeroïzed copy
 //! left on the stack!
 //!
 //! Usages of the [`SecretRef::expose()`] method should be all you need to audit
@@ -32,7 +32,7 @@
 //! // Expose the secret, should be what we "decrypted"
 //! assert_eq!(&secret_ref.expose()[..13], "Hello, world!".as_bytes());
 //!
-//! // Dropping the ref zeroizes the buffer
+//! // Dropping the ref zeroïzes the buffer
 //! drop(secret_ref);
 //! assert!(secret_buf.as_ref().into_iter().all(|x| x == 0));
 //! ```
@@ -43,26 +43,53 @@
 //! # use std::{io::Write, ops::Deref, pin::Pin};
 //! use hiding::{SecretBuf, SecretRef, Secret};
 //!
-//! let mut secret_buf = Box::pin(SecretBuf::with_default([0; 128]));
-//! let mut secret = Secret::with_buf(
-//!     secret_buf,
+//! let secret = Secret::with_default(
+//!     [0; 128],
 //!     |buf: Pin<&mut [u8; 128]>| {
 //!         // In practice this would be some kind of decryption
 //!         write!(buf.get_mut().as_mut_slice(), "Hello, world!").unwrap();
 //!     },
 //! );
-//! let mut secret = secret.as_mut();
 //!
 //! // Can acquire the ref as many times as needed
 //! for _ in 0..2 {
-//!     let secret_ref = SecretRef::new(&mut secret);
-//!
 //!     // Expose the secret, should be what we "decrypted"
-//!     assert_eq!(&secret_ref.expose()[..13], "Hello, world!".as_bytes());
+//!     assert_eq!(&secret.get_ref().expose()[..13], "Hello, world!".as_bytes());
 //! }
 //! ```
 
+#![doc(
+    html_logo_url = "https://ardaku.github.io/mm/logo.svg",
+    html_favicon_url = "https://ardaku.github.io/mm/icon.svg"
+)]
 #![no_std]
+#![warn(
+    anonymous_parameters,
+    missing_copy_implementations,
+    missing_debug_implementations,
+    missing_docs,
+    nonstandard_style,
+    rust_2018_idioms,
+    single_use_lifetimes,
+    trivial_casts,
+    trivial_numeric_casts,
+    unreachable_pub,
+    unused_extern_crates,
+    unused_qualifications,
+    variant_size_differences
+)]
+#![deny(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::private_doc_tests,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_html_tags,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls,
+    rustdoc::unescaped_backticks,
+    rustdoc::redundant_explicit_links
+)]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
@@ -80,7 +107,7 @@ use zeroize::{Zeroize, Zeroizing};
 /// If you can access an instance of this type, you cannot access the secrets
 /// that it used to contain.
 #[repr(transparent)]
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct SecretBuf<T>(T)
 where
     T: Zeroize;
@@ -105,7 +132,7 @@ where
     /// # Warning!
     ///
     /// Do not put secrets in `default` - The value here is not guaranteed to be
-    /// zeroized!
+    /// zeroïzed!
     #[inline(always)]
     pub fn with_default(default: T) -> Self {
         Self(default)
@@ -126,7 +153,11 @@ where
     where
         T: Unpin,
     {
-        f(unsafe { core::mem::transmute(self.as_mut()) });
+        f(unsafe {
+            core::mem::transmute::<Pin<&mut SecretBuf<T>>, Pin<&mut T>>(
+                self.as_mut(),
+            )
+        });
         unsafe { core::mem::transmute(self) }
     }
 }
@@ -153,52 +184,73 @@ where
     }
 }
 
-/// A secret held on the heap
+/// _**`alloc`**_: A secret held on the heap
+#[cfg(feature = "alloc")]
 #[repr(transparent)]
-pub struct Secret<T>(Zeroizing<T>)
+pub struct Secret<T>(Pin<alloc::boxed::Box<Zeroizing<T>>>)
 where
     T: Zeroize;
 
+#[cfg(feature = "alloc")]
 impl<T> Secret<T>
 where
     T: Zeroize,
 {
-    /// _**`alloc`**_: Create a new secret from a buffer pinned on the heap.
-    #[cfg(feature = "alloc")]
+    /// Create a new secret from a buffer pinned on the heap, with the buffer
+    /// initialized to [`Default::default()`].
     #[inline(always)]
-    pub fn new(f: impl FnOnce(Pin<&mut T>)) -> Pin<alloc::boxed::Box<Self>>
+    pub fn new(f: impl FnOnce(Pin<&mut T>)) -> Self
     where
-        T: Default
+        T: Default,
     {
         Self::with_buf(alloc::boxed::Box::pin(SecretBuf::new()), f)
     }
 
-    /// _**`alloc`**_: Create a new secret from a buffer pinned on the heap.
+    /// Create a new secret from a buffer pinned on the heap, with the buffer
+    /// initialized to the provided default.
     ///
     /// # Warning!
     ///
     /// Do not put secrets in `default` - The value here is not guaranteed to be
-    /// zeroized!
-    #[cfg(feature = "alloc")]
+    /// zeroïzed!
     #[inline(always)]
-    pub fn with_default(default: T, f: impl FnOnce(Pin<&mut T>)) -> Pin<alloc::boxed::Box<Self>>
-    where
-        T: Default
-    {
-        Self::with_buf(alloc::boxed::Box::pin(SecretBuf::with_default(default)), f)
+    pub fn with_default(default: T, f: impl FnOnce(Pin<&mut T>)) -> Self {
+        Self::with_buf(
+            alloc::boxed::Box::pin(SecretBuf::with_default(default)),
+            f,
+        )
     }
 
-    /// _**`alloc`**_: Create a new secret from a buffer pinned on the heap.
-    #[cfg(feature = "alloc")]
+    /// Create a new secret from a buffer pinned on the heap.
     #[inline(always)]
     pub fn with_buf(
         mut buf: Pin<alloc::boxed::Box<SecretBuf<T>>>,
         f: impl FnOnce(Pin<&mut T>),
-    ) -> Pin<alloc::boxed::Box<Self>> {
+    ) -> Self {
         let buf_ref: Pin<&mut SecretBuf<T>> = buf.as_mut();
 
-        f(unsafe { core::mem::transmute(buf_ref) });
+        f(unsafe {
+            core::mem::transmute::<Pin<&mut SecretBuf<T>>, Pin<&mut T>>(buf_ref)
+        });
         unsafe { core::mem::transmute(buf) }
+    }
+
+    /// Get as a reference to a [`SecretRef`].
+    #[inline(always)]
+    pub fn get_ref<'a>(&'a self) -> &'a SecretRef<'a, T>
+    where
+        T: Unpin,
+    {
+        unsafe { core::mem::transmute(self) }
+    }
+
+    /// Extract the zeroïzed buffer out of the secret to be reüsed.
+    pub fn into_buf(mut self) -> Pin<alloc::boxed::Box<SecretBuf<T>>>
+    where
+        T: Unpin,
+    {
+        self.0.as_mut().get_mut().zeroize();
+        unsafe { core::mem::transmute(self) }
     }
 }
 
@@ -217,16 +269,10 @@ pub struct SecretRef<'a, T>(Pin<&'a mut SecretBuf<T>>)
 where
     T: Zeroize + Unpin;
 
-impl<'a, T> SecretRef<'a, T>
+impl<T> SecretRef<'_, T>
 where
     T: Zeroize + Unpin,
 {
-    /// Create a new reference to a secret.
-    #[inline(always)]
-    pub fn new<'b>(secret: &'b mut Pin<&'a mut Secret<T>>) -> &'b Self {
-        unsafe { core::mem::transmute(secret) }
-    }
-
     /// Borrow and expose the secret.
     #[inline(always)]
     pub fn expose(&self) -> &T {

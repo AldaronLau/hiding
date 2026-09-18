@@ -15,9 +15,10 @@ Check out the [documentation] for examples.
 
 ### Features
 
- - Wrapper types for secrets that zeroize on drop, implements debug redacting the contents
+ - Wrapper types for secrets that zeroïze on drop, implements debug redacting the contents
  - Stack and heap options
- - Prevents moves where zeroizing might not happen otherwise
+ - Prevents moves where zeroïzing might not happen otherwise
+ - Builts on the `zeroize` crate
 
 ## MSRV
 
