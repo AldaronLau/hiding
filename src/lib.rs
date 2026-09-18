@@ -260,7 +260,7 @@ where
     T: Zeroize,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Secret").field(&"REDACTED").finish()
+        debug("Secret", f)
     }
 }
 
@@ -286,7 +286,7 @@ where
     T: Zeroize + Unpin,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("SecretRef").field(&"REDACTED").finish()
+        debug("SecretRef", f)
     }
 }
 
@@ -298,4 +298,8 @@ where
     fn drop(&mut self) {
         self.0.as_mut().get_mut().0.zeroize()
     }
+}
+
+fn debug(name: &str, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    f.debug_tuple(name).field(&"REDACTED").finish()
 }
